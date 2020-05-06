@@ -1,89 +1,109 @@
-/*Taimoor Daud Khan
+/*
+Taimoor Daud Khan
 Date: 10/12/2018
 Object Tracking with SIFT
-BioRobotics Lab */
+*/
 
 #include <iostream>
-#include <stdio.h>
-#include "opencv2\core.hpp"
 #include "opencv2\highgui.hpp"
-#include "opencv2\features2d.hpp"
 #include "opencv2\xfeatures2d\nonfree.hpp"
 #include "opencv2\imgproc.hpp"
 #include "opencv2\calib3d.hpp"
 
-
 using namespace std;
 using namespace cv;
 
-
 int main(int argv, char** argc)
 {
-	const int MIN_MATCH_COUNT = 30;
+	const int MIN_MATCH_COUNT = 30; // minimum number of SIFT features for successful object detection
 
+	// vector of keypoints to hold the feature coordinates & a mat object to hold the feature descriptors (training image)
 	Mat descriptors_1;
+	vector<KeyPoint> keypoints_1;
 
-	cv::Ptr<Feature2D> f2d = xfeatures2d::SIFT::create();
+	Ptr<Feature2D> f2d = xfeatures2d::SIFT::create(); // pointer to 2D SIFT features extractor object
 
-	Mat trainingImg = imread("C:/Users/timur/Syncplicity/BioRobotics Laboratory/Computer Vision Algorithms/Campturing Image/image.png", 0);
+	Mat trainingImg = imread("C:/Users/timur/Syncplicity/BioRobotics Laboratory/Computer Vision Algorithms/Object Tracking SIFT/image.jpg", 0); // load the cropped grey-scale image of the objet of interest
+
+	// Mat objects for camera frames
 	Mat frame;
 	Mat Query;
 
-	/*namedWindow("Img", cv::WINDOW_AUTOSIZE);
-	imshow("Img", trainingImg);*/
+	// uncomment the following lines to display the training image
+	/*namedWindow("Training Img", WINDOW_AUTOSIZE);
+	imshow("Training Img", trainingImg);*/
 
-	std::vector<KeyPoint> keypoints_1;
+	// detect and compute SIFT features from the training image, returns the feature keypoints and descriptors
 	f2d->detect(trainingImg, keypoints_1);
 	f2d->compute(trainingImg, keypoints_1, descriptors_1);
 
+	// define a key for program termination and initialize it to any character other than the one used for termination
 	char charCheckForEscKey = 1 ;
 
-	VideoCapture vid(0);
+	VideoCapture vid(0); // an object for video capturing
 
 	if (!vid.isOpened())
 	{
-		std::cout << "error: Webcam connect unsuccessful\n";
+		cout << "error: Webcam connect unsuccessful\n";
 		return (0);
 	}
 
-	namedWindow("Logitech Cam", cv::WINDOW_AUTOSIZE);
+	namedWindow("Logitech Cam", WINDOW_AUTOSIZE); // define a window for hosting video
 
+	// loop runs till we exit by pressing Esc or untill the camera disconnects
 	while (charCheckForEscKey != 27 && vid.isOpened())
 	{
 		if (!vid.read(frame))
 			break;
 
-		std::vector<KeyPoint> keypoints_2;
+		// vector of keypoints to hold the feature coordinates & a mat object to hold the feature descriptors (current video frame)
+		vector<KeyPoint> keypoints_2;
 		Mat descriptors_2;
 
-		cv::cvtColor(frame, Query, cv::COLOR_BGR2GRAY);
+		cvtColor(frame, Query, COLOR_BGR2GRAY); // grey-scale image of current video frame
+
+		// detect and compute SIFT features from the Query frame, returns the feature keypoints and descriptors
 		f2d->detect(Query, keypoints_2);
 		f2d->compute(Query, keypoints_2, descriptors_2);
 
+		// pointer to a SIFT descriptor matcher object
 		Ptr<DescriptorMatcher> matcher = DescriptorMatcher::create(DescriptorMatcher::FLANNBASED);
-		std::vector< std::vector<DMatch> > knn_matches;
+
+		// find 2 best matches for each descriptor in the Query frame
+		vector<vector<DMatch>> knn_matches;
 		matcher->knnMatch(descriptors_1, descriptors_2, knn_matches, 2);
 
+		// image frame to show SIFT feature detection
 		Mat img_matches;
 
 		const float ratio_thresh = 0.75f;
-		std::vector<DMatch> good_matches;
-		for (size_t i = 0; i < knn_matches.size(); i++)
+		vector<DMatch> good_matches;
+
+		// check for any detected features
+		if (knn_matches.size() > 0)
 		{
-			if (knn_matches[i][0].distance < ratio_thresh * knn_matches[i][1].distance)
+			// loop over the matches found
+			for (size_t i = 0; i < knn_matches.size(); i++)
 			{
-				good_matches.push_back(knn_matches[i][0]);
+				// filter for good matches using ratio test
+				if (knn_matches[i][0].distance < ratio_thresh * knn_matches[i][1].distance)
+				{
+					good_matches.push_back(knn_matches[i][0]);
+				}
 			}
 
+			// draw detected features in frame
 			drawMatches(trainingImg, keypoints_1, Query, keypoints_2,
 				good_matches, img_matches, Scalar::all(-1), Scalar::all(-1),
 				vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
 
+
 			if (good_matches.size() > MIN_MATCH_COUNT)
 			{
 
-				std::vector<Point2f> tp;
-				std::vector<Point2f> qp;
+				// vector for training and query keypoints for good matches
+				vector<Point2f> tp;
+				vector<Point2f> qp;
 
 				for (size_t k = 0; k < good_matches.size(); k++)
 				{
@@ -91,44 +111,47 @@ int main(int argv, char** argc)
 					tp.push_back(keypoints_1[good_matches[k].queryIdx].pt);
 				}
 
+				// homograph transform
 				Mat H = findHomography(tp, qp, RANSAC);
 
-				cv::Size s = trainingImg.size();
-				int rows = trainingImg.rows;
-				int cols = trainingImg.cols;
+				// training image size
+				Size s = trainingImg.size();
+				int rows = s.height;
+				int cols = s.width;
 
-				rows = s.height;
-				cols = s.width;
+				// training object vertices starting from top left and then moving clockwise
+				vector<Point2f> trainingBorder(4);
+				trainingBorder[0] = Point(0, 0);
+				trainingBorder[1] = Point(cols-1, 0);
+				trainingBorder[2] = Point(cols-1, rows-1);
+				trainingBorder[3] = Point(0, rows-1);
 
-				std::vector<Point2f> trainingBorder(4);
-				trainingBorder[0] = cv::Point(0, 0); 
-				trainingBorder[1] = cv::Point(cols-1, 0);
-				trainingBorder[2] = cv::Point(cols-1, rows-1);
-				trainingBorder[3] = cv::Point(0, rows-1);
-
-				std::vector<Point2f> QueryBorder(4);
-
+				// query object vertices
+				vector<Point2f> QueryBorder(4);
 				perspectiveTransform(trainingBorder, QueryBorder, H);
 
-				//cv::polylines(frame, QueryBorder, true, (0, 255, 0), 5);
-
+				// draw a green colored border around the object
 				line(frame, QueryBorder[0] , QueryBorder[1] , Scalar(0, 255, 0), 4);
 				line(frame, QueryBorder[1] , QueryBorder[2] , Scalar(0, 255, 0), 4);
 				line(frame, QueryBorder[2] , QueryBorder[3] , Scalar(0, 255, 0), 4);
 				line(frame, QueryBorder[3] , QueryBorder[0] , Scalar(0, 255, 0), 4);
-				
-			} 
+
+				// image with detected features
+				imshow("Good Matches & Object detection", img_matches);
+
+			}
 			else
 			{
-				cout << "Not enough math found" << endl;
+				cout << "Not enough matches found" << endl;
 			}
-
 		}
-		
-		imshow("Good Matches & Object detection", img_matches);
-		imshow("Logitech Cam", frame); 
 
-		charCheckForEscKey = cv::waitKey(1);
+		// display the video frame
+		imshow("Logitech Cam", frame);
+
+		// wait 1ms to check for Esc key
+		charCheckForEscKey = waitKey(1);
 	}
+
 	return (0);
 }
