@@ -23,7 +23,7 @@ int main(int argv, char** argc)
 
 	Ptr<Feature2D> f2d = xfeatures2d::SIFT::create(); // pointer to 2D SIFT features extractor object
 
-	Mat trainingImg = imread("C:/Users/timur/Syncplicity/BioRobotics Laboratory/Computer Vision Algorithms/Object Tracking SIFT/image.jpg", 0); // load the cropped grey-scale image of the objet of interest
+	Mat trainingImg = imread("C:/Users/timur/Syncplicity/BioRobotics Laboratory/Computer Vision Algorithms/Object Tracking SIFT/image.png", 0); // load the cropped grey-scale image of the objet of interest
 
 	// Mat objects for camera frames
 	Mat frame;
@@ -36,6 +36,12 @@ int main(int argv, char** argc)
 	// detect and compute SIFT features from the training image, returns the feature keypoints and descriptors
 	f2d->detect(trainingImg, keypoints_1);
 	f2d->compute(trainingImg, keypoints_1, descriptors_1);
+
+	// check for features in the training image
+	if (descriptors_1.empty())
+	{
+		cout << "No features detected in the training image!" << endl;
+	}
 
 	// define a key for program termination and initialize it to any character other than the one used for termination
 	char charCheckForEscKey = 1 ;
@@ -69,19 +75,21 @@ int main(int argv, char** argc)
 		// pointer to a SIFT descriptor matcher object
 		Ptr<DescriptorMatcher> matcher = DescriptorMatcher::create(DescriptorMatcher::FLANNBASED);
 
-		// find 2 best matches for each descriptor in the Query frame
-		vector<vector<DMatch>> knn_matches;
-		matcher->knnMatch(descriptors_1, descriptors_2, knn_matches, 2);
-
-		// image frame to show SIFT feature detection
-		Mat img_matches;
-
-		const float ratio_thresh = 0.75f;
-		vector<DMatch> good_matches;
-
-		// check for any detected features
-		if (knn_matches.size() > 0)
+		// check if features are detected in both the training and query images
+		if (!descriptors_2.empty() && !descriptors_1.empty())
 		{
+
+			// find 2 best matches for each descriptor in the Query frame
+			vector<vector<DMatch>> knn_matches;
+			matcher->knnMatch(descriptors_1, descriptors_2, knn_matches, 2);
+
+			// image frame to show SIFT feature detection
+			Mat img_matches;
+
+			const float ratio_thresh = 0.75f;
+			vector<DMatch> good_matches;
+
+
 			// loop over the matches found
 			for (size_t i = 0; i < knn_matches.size(); i++)
 			{
@@ -122,19 +130,19 @@ int main(int argv, char** argc)
 				// training object vertices starting from top left and then moving clockwise
 				vector<Point2f> trainingBorder(4);
 				trainingBorder[0] = Point(0, 0);
-				trainingBorder[1] = Point(cols-1, 0);
-				trainingBorder[2] = Point(cols-1, rows-1);
-				trainingBorder[3] = Point(0, rows-1);
+				trainingBorder[1] = Point(cols - 1, 0);
+				trainingBorder[2] = Point(cols - 1, rows - 1);
+				trainingBorder[3] = Point(0, rows - 1);
 
 				// query object vertices
 				vector<Point2f> QueryBorder(4);
 				perspectiveTransform(trainingBorder, QueryBorder, H);
 
 				// draw a green colored border around the object
-				line(frame, QueryBorder[0] , QueryBorder[1] , Scalar(0, 255, 0), 4);
-				line(frame, QueryBorder[1] , QueryBorder[2] , Scalar(0, 255, 0), 4);
-				line(frame, QueryBorder[2] , QueryBorder[3] , Scalar(0, 255, 0), 4);
-				line(frame, QueryBorder[3] , QueryBorder[0] , Scalar(0, 255, 0), 4);
+				line(frame, QueryBorder[0], QueryBorder[1], Scalar(0, 255, 0), 4);
+				line(frame, QueryBorder[1], QueryBorder[2], Scalar(0, 255, 0), 4);
+				line(frame, QueryBorder[2], QueryBorder[3], Scalar(0, 255, 0), 4);
+				line(frame, QueryBorder[3], QueryBorder[0], Scalar(0, 255, 0), 4);
 
 				// image with detected features
 				imshow("Good Matches & Object detection", img_matches);

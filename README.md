@@ -15,7 +15,7 @@ To use and test this code, clone the repository and then run the project with Vi
 
 Alternatively, users can also compile and run the _Random Object Detection.cpp_ file with their own prefered choice of compiler.
 
-The user also needs to provide the correct path to their <Training Image> in _line 28_ of the _Random Object Detection.cpp_ file
+The user also needs to provide the correct path to their <Training Image> in _line 26_ of the _Random Object Detection.cpp_ file
 
 `Mat trainingImg = imread("<user file path>", 0);`
 
