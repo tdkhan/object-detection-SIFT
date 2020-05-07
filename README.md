@@ -1,5 +1,5 @@
 # Object Detection with SIFT
-***
+
 **Scale Invariant Feature Transform (or SIFT)** is a computer vision algorithm that can be used to extract useful keypoints and their descriptors from an image. As the name suggests the algorithm is robust to any scaling of the image and this makes it suitable for object detection. Unlike contemporary object detection algorithms, this does not require large training image datasets.
 
 This code uses the _OpenCV_ library to demonstrate how SIFT can be used for object detection. The algorithm can be deconstructed into the following four steps
@@ -18,7 +18,7 @@ Alternatively, users can also compile and run the _Random Object Detection.cpp_ 
 The user also needs to provide the correct path to their <Training Image> in _line 28_ of the _Random Object Detection.cpp_ file
 
 `Mat trainingImg = imread("<user file path>", 0);`
-***
+
 ## Example Results
 
 The following images show the code succesfully detecting an object of interest, in this case it was the book _Astrophysics for People in a Hurry_ by _Neil Neil deGrasse Tyson_.
@@ -28,6 +28,6 @@ The following images show the code succesfully detecting an object of interest, 
 The algorithm does fairly well even for partially occluded objects.
 
 ![Partially Occluded Object Detection](Image2.jpg)
-***
+
 ## References
 Lowe, D.G. Distinctive Image Features from Scale-Invariant Keypoints. International Journal of Computer Vision 60, 91–110 (2004). [PDF](https://www.cs.ubc.ca/~lowe/papers/ijcv04.pdf)
